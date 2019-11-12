@@ -10,17 +10,14 @@ ui <- fluidPage(
     # Sidebar with a slider input for number of bins 
     sidebarLayout(
         sidebarPanel(
-            fluidRow(
-                column(12, align = 'center',
-                       actionButton('button', 'Next', icon(name = 'arrow'),
-                                    style = 'font-size:400%'))
-            )
+            uiOutput('ui_button'),
+            uiOutput('ui_next')
         ),
         # Show a plot of the generated distribution
         mainPanel(
-           fluidRow(column(3,
-                           h1(textOutput('a'))),
-                    column(9,
+           fluidRow(column(12, align = 'center',
+                           h1(textOutput('a')))),
+           fluidRow(column(12, align = 'center',
                            imageOutput('b'))),
            fluidRow(column(12,
                            sliderInput('multiplier', 'Multiplier',
@@ -39,7 +36,7 @@ ui <- fluidPage(
                      column(4,
                             checkboxInput('warmup', 'Warmup only', value = FALSE))),
            fluidRow(column(12,
-                           p(textOutput('n'), ' exercises selected.')))
+                           p(textOutput('nr'))))
         )
     )
 )
@@ -48,7 +45,9 @@ ui <- fluidPage(
 server <- function(input, output) {
 
     counter <- reactiveVal(value = 0)
-    
+    n <- reactiveVal(value = 1)
+
+    # Create a filtered data object
     filtered_data <- reactive({
         out <- df %>%
             filter(area %in% input$filter_area,
@@ -59,37 +58,104 @@ server <- function(input, output) {
         out
     })
     
-    output$n <- renderText({
+    # Get the number of rows in the filtered datas
+    output$nr <- renderText({
         fd <- filtered_data()
-        nrow(fd)
-    })
-    
-    data <- reactiveValues(data = df[sample(1:nrow(df), 1),])
-    observeEvent(input$button,{
         cc <- counter()
-        counter(cc + 1)
-        x <- filtered_data()
-        s <- sample(1:nrow(x), 1)
-        out <- x[s,]
-        data$data <- out
+        nn <- nrow(fd)
+        paste0('Exercise number ', cc, ' of ', nn)
     })
     
+    # Change selected exercise randomly
+    observeEvent(input$next_button,{
+        fd <- filtered_data()
+        nn <- nrow(fd)
+        cc <- counter()
+        new_cc <- cc + 1
+        if(new_cc > nn){
+            counter(1)
+        } else {
+            counter(new_cc)
+        }
+    })
+    
+    # Change selected exercise sequentially
+    observeEvent(input$button,{
+        fd <- filtered_data()
+        nn <- nrow(fd)
+        new_cc <- sample(1:nn, 1)
+        counter(new_cc)
+    })
+    
+    # Observe changes to the counter, and refresh the data accordingly
+    the_row <- reactive({
+        cc <- counter()
+        x <- filtered_data()
+        out <- x[cc,]
+        out
+    })
+
     output$a <- renderText({
-        dd <- data$data
-        dd$name
+        dd <- the_row()
+        mm <- input$multiplier
+        val <- round(dd$unit * mm)
+        out <- paste0(val, ' ', dd$name)
     })
     
     output$b <- renderImage({
-        dd <- data$data
+        dd <- the_row()
         filename <- normalizePath(file.path('./img',
-                                            paste(dd$image, sep='')))
-        
-        # Return a list containing the filename and alt text
+                                            paste('0.png', sep='')))
+        if(!is.null(dd)){
+            if(nrow(dd) > 0){
+                filename <- normalizePath(file.path('./img',
+                                                    paste(dd$image, sep='')))
+            }
+        }
         list(src = filename,
              alt = 'Some image')
-        
     }, deleteFile = FALSE)
     
+    
+    # Observe the filters and refresh the counter
+    observeEvent(input$filter_area,{
+        counter(0)
+    })
+    observeEvent(input$filter_intensity,{
+        counter(0)
+    })
+    observeEvent(input$warmup,{
+        counter(0)
+    })
+    
+    # Make a next button ui
+    output$ui_next <- renderUI({
+        cc <- counter()
+        if(cc == 0){
+            next_label <- 'Start sequentially'
+        } else {
+            next_label <- 'Next'
+        }
+        fluidRow(column(12, align = 'center',
+                        actionButton('next_button', next_label, icon(name = 'arrow'),
+                                     style = 'font-size:100%')))
+    })
+    
+    output$ui_button <- renderUI({
+        cc <- counter()
+        if(cc == 0){
+            button_label <- 'Start randomly'
+            button_size <- 'font-size:200%'
+        } else {
+            button_label <- 'Random'
+            button_size <- 'font-size:400%'
+        }
+        fluidRow(
+            column(12, align = 'center',
+                   actionButton('button', button_label, icon(name = 'arrow'),
+                                style = button_size))
+        )
+    })
 }
 
 # Run the application 
