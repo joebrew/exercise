@@ -3,10 +3,10 @@ source('global.R')
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
-
+    
     # Application title
     titlePanel("Title"),
-
+    
     # Sidebar with a slider input for number of bins 
     sidebarLayout(
         sidebarPanel(
@@ -15,38 +15,47 @@ ui <- fluidPage(
         ),
         # Show a plot of the generated distribution
         mainPanel(
-           fluidRow(column(12, align = 'center',
-                           h1(textOutput('a')))),
-           fluidRow(column(12, align = 'center',
-                           imageOutput('b'))),
-           fluidRow(column(12,
-                           sliderInput('multiplier', 'Multiplier',
-                                       min = 0.25,
-                                       max = 4,
-                                       value = 1,
-                                       step = 0.25))),
-            fluidRow(column(4,
-                           checkboxGroupInput('filter_area', 'Area',
-                                              choices = sort(unique(df$area)),
-                                              selected = sort(unique(df$area)))),
-                     column(4,
+            fluidRow(column(12, align = 'center',
+                            h1(textOutput('a')))),
+            fluidRow(column(12, align = 'center',
+                            imageOutput('b'))),
+            fluidRow(column(12,
+                            sliderInput('multiplier', 'Multiplier',
+                                        min = 0.25,
+                                        max = 4,
+                                        value = 1,
+                                        step = 0.25))),
+            fluidRow(column(3,
+                            checkboxGroupInput('filter_area', 'Area',
+                                               choices = sort(unique(df$area)),
+                                               selected = sort(unique(df$area)))),
+                     column(3,
                             checkboxGroupInput('filter_intensity', 'Type',
                                                choices = sort(unique(df$intensity)),
                                                selected = sort(unique(df$intensity)))),
-                     column(4,
-                            checkboxInput('warmup', 'Warmup only', value = FALSE))),
-           fluidRow(column(12,
-                           p(textOutput('nr'))))
+                     column(3,
+                            checkboxInput('warmup', 'Warmup only', value = FALSE)),
+                     column(3,
+                            checkboxInput('ben', 'Ben?', value = FALSE))),
+            fluidRow(column(3,
+                            checkboxInput('include_barbells', 'Include barbells?', value = TRUE)),
+                     column(3, checkboxInput('include_bench', 'Include bench?', value = TRUE)),
+                     column(3,
+                            checkboxInput('include_bars', 'Include bars?', value = TRUE)),
+                     column(3,
+                            checkboxInput('include_dumbells', 'Include dumbells?', value = TRUE))),
+            fluidRow(column(12,
+                            p(textOutput('nr'))))
         )
     )
 )
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
-
+    
     counter <- reactiveVal(value = 0)
     n <- reactiveVal(value = 1)
-
+    
     # Create a filtered data object
     filtered_data <- reactive({
         out <- df %>%
@@ -54,6 +63,21 @@ server <- function(input, output) {
                    intensity %in% input$filter_intensity)
         if(input$warmup){
             out <- out %>% filter(warmup == 'yes')
+        }
+        if(!input$include_bars){
+            out <- out %>% filter(needs_bars == 'no')
+        }
+        if(!input$include_dumbells){
+            out <- out %>% filter(needs_dumbells == 'no')
+        }
+        if(!input$include_barbells){
+            out <- out %>% filter(needs_barbells == 'no')
+        }
+        if(!input$include_bench){
+            out <- out %>% filter(needs_bench == 'no')
+        }
+        if(input$ben){
+            out <- out %>% filter(ben_can_do == 'yes')
         }
         out
     })
@@ -94,7 +118,7 @@ server <- function(input, output) {
         out <- x[cc,]
         out
     })
-
+    
     output$a <- renderText({
         dd <- the_row()
         mm <- input$multiplier
@@ -125,6 +149,21 @@ server <- function(input, output) {
         counter(0)
     })
     observeEvent(input$warmup,{
+        counter(0)
+    })
+    observeEvent(input$ben,{
+        counter(0)
+    })
+    observeEvent(input$include_bars,{
+        counter(0)
+    })
+    observeEvent(input$include_dumbells,{
+        counter(0)
+    })
+    observeEvent(input$include_barbells,{
+        counter(0)
+    })
+    observeEvent(input$include_bench,{
         counter(0)
     })
     
